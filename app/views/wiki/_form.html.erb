@@ -1,0 +1,62 @@
+
+
+<% if @project %>
+  <% users = @project.users.active.joins(:email_address).where.not(email_addresses: { address: [nil, ""] }).distinct.select("users.id", "users.login") %>
+<% else %>
+  <% users = User.active.joins(:email_address).where.not(email_addresses: { address: [nil, ""] }).select("users.id", "users.login") %>
+<% end %>
+
+<% users_data = users.map { |user| { id: user.id, login: user.login } }.to_json %>
+<% symbol = Setting.plugin_flux_mentions['symbol'] %>
+
+<script>
+$(document).ready(function() {
+  var usersData = <%= users_data.html_safe %>;
+  var symbol = '<%= symbol %>';
+
+  // Redmine core already attaches its own Tribute-based autocomplete for '#' (issues),
+  // '[[' (wiki pages) and '@' (users) on focus of this same textarea, guarded by a
+  // data-tribute flag so it only attaches once. Attaching our own Tribute instance here
+  // unconditionally on page load sets that flag first, so core's autocomplete never
+  // attaches when the field is later focused -- silently killing the '#' and '[[' menus.
+  // Core already covers '@' correctly, so skip ours for the default symbol.
+  if (symbol === '@') {
+    return;
+  }
+
+  let tributed = new Tribute({
+    collection: [
+      {
+        trigger: symbol,
+        values: usersData,
+        lookup: 'login',
+        fillAttr: 'login',
+        requireLeadingSpace: true,
+        selectTemplate: function (item) {
+          return symbol + item.original.login;
+        }
+      }
+    ]
+  });
+
+  var $wikiTextarea = $('textarea#content_text');
+ 
+
+  $wikiTextarea.on('keydown', function(event) {
+    if (event.key === symbol && !event.repeat ) {
+    }
+  });
+
+
+  tributed.attach($wikiTextarea);
+
+});
+
+
+
+function sanitizeHTML(html) {
+ 
+  return html;
+}
+</script>
+
